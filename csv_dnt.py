@@ -1,15 +1,16 @@
 import pandas as pd
 import struct
 import time
+from math import isnan
 
-# file_path = "itemdropgrouptable.dnt"
-# file_path = "accounteffecttable.dnt"
-# dnt_file_path = "accounteffecttable.dnt"
-# csv_file_path = "accounteffecttable.csv"
-# dnt_file_path = "monstertable_boss.dnt"
-# csv_file_path = "monstertable_boss.csv"
-dnt_file_path = "itemdropgrouptable.dnt"
-csv_file_path = "itemdropgrouptable.csv"
+# dnt_file_path = "itemdropgrouptable.dnt"
+# csv_file_path = "itemdropgrouptable.csv"
+# dnt_file_path = "stagerewardtable.dnt"
+# csv_file_path = "stagerewardtable.csv"
+# dnt_file_path = "stagerewardtable_normal.dnt"
+# csv_file_path = "stagerewardtable_normal.csv"
+dnt_file_path = "itemtable_equipment.dnt"
+csv_file_path = "itemtable_equipment.csv"
 
 
 def ReadDataToDF(file_path):
@@ -98,9 +99,13 @@ def WriteDataType(output_data, arg_data, arg_type):
     return: 新的output_data
     '''
     if arg_type == 1:
-        arg_len = len(arg_data)
-        output_data += struct.pack('H', arg_len)
-        output_data += struct.pack(str(arg_len)+'s', str.encode(arg_data))
+        if not isinstance(arg_data,str) and isnan(arg_data): 
+            arg_len = 0
+            output_data += struct.pack('H', arg_len)
+        else:
+            arg_len = len(str(arg_data))
+            output_data += struct.pack('H', arg_len)
+            output_data += struct.pack(str(arg_len)+'s', str.encode(str(arg_data)))
     elif (arg_type == 2 or arg_type == 3):
         output_data += struct.pack('I', int(arg_data))
     elif arg_type == 4:
@@ -202,11 +207,15 @@ def ConvertDntToCSV(dnt_file_name, csv_file_name):
 
 
 def ConvertCSVToDnt(csv_file_name, dnt_file_name):
+    before_convert_time = time.time()
     data_frame = pd.read_csv(csv_file_name, index_col=0)
     info_data_frame = pd.read_csv('info_'+csv_file_name, index_col=0)
     WriteData(data_frame, info_data_frame, dnt_file_name)
+    end_convert_time = time.time()
+    print("conver csv to dnt time cost : " +
+          str(end_convert_time-before_convert_time))
 
 
 if __name__ == '__main__':
     ConvertDntToCSV(dnt_file_path, csv_file_path)
-    # ConvertCSVToDnt(csv_file_path, "test"+dnt_file_path)
+    ConvertCSVToDnt(csv_file_path, "test"+dnt_file_path)
