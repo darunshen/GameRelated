@@ -1,5 +1,6 @@
 import pandas as pd
 import struct
+import time
 
 # file_path = "itemdropgrouptable.dnt"
 # file_path = "accounteffecttable.dnt"
@@ -22,6 +23,7 @@ def ReadDataToDF(file_path):
     column_name:
     column_arg_type:
     '''
+    begin_time = time.time()
     with open(file_path, 'rb')as dnt_handle:
         dnt_bytes = dnt_handle.read()
         columns = struct.unpack('H', dnt_bytes[4:6])[0]
@@ -47,8 +49,12 @@ def ReadDataToDF(file_path):
             seek = seek+1
             data_frame[column_info_item['column_name']] = None
             column_info.append(column_info_item)
+        before_read_data = time.time()
         data_frame_result = ReadData(
             data_frame, column_info, rows, dnt_bytes, seek)
+        end_read_data = time.time()
+        print("before read data time cost:"+str(before_read_data-begin_time))
+        print("read data time cost:"+str(end_read_data-before_read_data))
         return (data_frame_result, column_info)
 
 
@@ -112,19 +118,39 @@ def ReadData(data_frame, column_info, rows, dnt_bytes, seek):
     data_frame:初始数据集
     return: 新的数据集或0(error)
     '''
+    data_frame_append_timecost = 0
+    fill_data_timecost = 0
+    init_series_timecost = 0
+    assign_data_timecost = 0
     for row in range(0, rows):
-        row_item = pd.Series()
+        before_init_series = time.time()
+        row_item = {}
+        end_init_series = time.time()
+        init_series_timecost += (end_init_series - before_init_series)
         for column_info_item in column_info:
+            before_fill_data = time.time()
             seek_tmp = FillDataType(column_info_item, dnt_bytes, seek)
+            end_fill_data = time.time()
+            fill_data_timecost += (end_fill_data - before_fill_data)
+            before_assign_data = time.time()
             row_item[column_info_item['column_name']
                      ] = column_info_item['column_arg_data']
+            end_assign_data = time.time()
+            assign_data_timecost += (end_assign_data-before_assign_data)
             if seek_tmp != 0:
                 seek = seek_tmp
             else:
                 print('error! row ='+row+' data:\n')
                 print(column_info_item)
                 return None
+        before_append_data = time.time()
         data_frame = data_frame.append(row_item, ignore_index=True)
+        end_append_data = time.time()
+        data_frame_append_timecost += (end_append_data-before_append_data)
+    print('data frame append time cost : '+str(data_frame_append_timecost))
+    print('fill data time cost : '+str(fill_data_timecost))
+    print('init series time cost : '+str(init_series_timecost))
+    print('assign data time cost : '+str(assign_data_timecost))
     return data_frame
 
 
@@ -147,7 +173,8 @@ def WriteData(data_frame, column_info, output_dnt_file):
                 col_len = len(column)
                 output_data += struct.pack('B', col_len)
                 output_data += struct.pack('B', 0)
-                output_data += struct.pack(str(col_len)+'s', str.encode(column))
+                output_data += struct.pack(str(col_len) +
+                                           's', str.encode(column))
                 output_data += struct.pack('B',
                                            column_info['column_arg_type'][index])
             index = index + 1
@@ -167,18 +194,19 @@ def WriteToCSV(data_frame, csv_file_name):
 
 
 def ConvertDntToCSV(dnt_file_name, csv_file_name):
-    data_frame = ReadDataToDF(dnt_file_name)[0]
-    info_frame = ReadDataToDF(dnt_file_name)[1]
+    read_data_result = ReadDataToDF(dnt_file_name)
+    data_frame = read_data_result[0]
+    info_frame = read_data_result[1]
     WriteToCSV(data_frame, csv_file_name)
     WriteToCSV(pd.DataFrame(info_frame), 'info_'+csv_file_name)
 
 
 def ConvertCSVToDnt(csv_file_name, dnt_file_name):
-    data_frame = pd.read_csv(csv_file_name,index_col=0)
-    info_data_frame = pd.read_csv('info_'+csv_file_name,index_col=0)
+    data_frame = pd.read_csv(csv_file_name, index_col=0)
+    info_data_frame = pd.read_csv('info_'+csv_file_name, index_col=0)
     WriteData(data_frame, info_data_frame, dnt_file_name)
 
 
 if __name__ == '__main__':
     ConvertDntToCSV(dnt_file_path, csv_file_path)
-    ConvertCSVToDnt(csv_file_path, "test"+dnt_file_path)
+    # ConvertCSVToDnt(csv_file_path, "test"+dnt_file_path)
