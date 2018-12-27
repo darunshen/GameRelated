@@ -96,7 +96,7 @@ def WriteDataType(output_data, arg_data, arg_type):
         output_data += struct.pack('H', arg_len)
         output_data += struct.pack(str(arg_len)+'s', str.encode(arg_data))
     elif (arg_type == 2 or arg_type == 3):
-        output_data += struct.pack('I', arg_data)
+        output_data += struct.pack('I', int(arg_data))
     elif arg_type == 4:
         output_data += struct.pack('f', arg_data*100)
     elif arg_type == 5:
@@ -181,4 +181,4 @@ def ConvertCSVToDnt(csv_file_name, dnt_file_name):
 
 if __name__ == '__main__':
     ConvertDntToCSV(dnt_file_path, csv_file_path)
-    # ConvertCSVToDnt(csv_file_path, "test"+dnt_file_path)
+    ConvertCSVToDnt(csv_file_path, "test"+dnt_file_path)
